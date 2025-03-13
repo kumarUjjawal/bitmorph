@@ -1,15 +1,89 @@
 // app/page.tsx
 'use client';
 
-import { useState, useRef } from 'react';
-// Removed the Image import from next/image
+import { useState, useRef, useEffect } from 'react';
 
 export default function Home() {
   const [svgFile, setSvgFile] = useState<File | null>(null);
   const [svgUrl, setSvgUrl] = useState<string | null>(null);
   const [pngUrl, setPngUrl] = useState<string | null>(null);
   const [isConverting, setIsConverting] = useState(false);
+  const [originalWidth, setOriginalWidth] = useState<number>(0);
+  const [originalHeight, setOriginalHeight] = useState<number>(0);
+  const [customWidth, setCustomWidth] = useState<string>('');
+  const [customHeight, setCustomHeight] = useState<string>('');
+  const [maintainAspectRatio, setMaintainAspectRatio] = useState(true);
+  const [quality, setQuality] = useState<number>(1);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Update dimensions when a new SVG is loaded
+  useEffect(() => {
+    if (svgUrl) {
+      const getSVGDimensions = async () => {
+        try {
+          // Read the SVG file content
+          if (!svgFile) return;
+
+          const svgText = await svgFile.text();
+
+          // Parse the SVG dimensions
+          const parser = new DOMParser();
+          const svgDoc = parser.parseFromString(svgText, 'image/svg+xml');
+          const svgElement = svgDoc.documentElement;
+
+          // Get SVG dimensions
+          const svgWidth = svgElement.getAttribute('width');
+          const svgHeight = svgElement.getAttribute('height');
+          const viewBox = svgElement.getAttribute('viewBox');
+
+          let width = 800; // Default width
+          let height = 600; // Default height
+
+          if (svgWidth && svgHeight) {
+            width = parseFloat(svgWidth);
+            height = parseFloat(svgHeight);
+          } else if (viewBox) {
+            const viewBoxValues = viewBox.split(' ').map(parseFloat);
+            if (viewBoxValues.length === 4) {
+              width = viewBoxValues[2];
+              height = viewBoxValues[3];
+            }
+          }
+
+          setOriginalWidth(width);
+          setOriginalHeight(height);
+          setCustomWidth(width.toString());
+          setCustomHeight(height.toString());
+        } catch (error) {
+          console.error('Error getting SVG dimensions:', error);
+        }
+      };
+
+      getSVGDimensions();
+    }
+  }, [svgUrl, svgFile]);
+
+  // Update height when width changes and maintain aspect ratio
+  useEffect(() => {
+    if (maintainAspectRatio && originalWidth && originalHeight && customWidth) {
+      const aspectRatio = originalHeight / originalWidth;
+      const newHeight = Math.round(parseFloat(customWidth) * aspectRatio);
+      if (!isNaN(newHeight)) {
+        setCustomHeight(newHeight.toString());
+      }
+    }
+  }, [customWidth, maintainAspectRatio, originalWidth, originalHeight]);
+
+  // Update width when height changes and maintain aspect ratio
+  useEffect(() => {
+    if (maintainAspectRatio && originalWidth && originalHeight && customHeight) {
+      const aspectRatio = originalWidth / originalHeight;
+      const newWidth = Math.round(parseFloat(customHeight) * aspectRatio);
+      if (!isNaN(newWidth)) {
+        setCustomWidth(newWidth.toString());
+      }
+    }
+  }, [customHeight, maintainAspectRatio, originalWidth, originalHeight]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -39,33 +113,11 @@ export default function Home() {
       // Read the SVG file content
       const svgText = await svgFile.text();
 
-      // Parse the SVG dimensions
-      const parser = new DOMParser();
-      const svgDoc = parser.parseFromString(svgText, 'image/svg+xml');
-      const svgElement = svgDoc.documentElement;
-
-      // Get SVG dimensions
-      const svgWidth = svgElement.getAttribute('width');
-      const svgHeight = svgElement.getAttribute('height');
-      const viewBox = svgElement.getAttribute('viewBox');
-
-      // Calculate dimensions for the canvas
-      let width = 800; // Default width
-      let height = 600; // Default height
-
-      if (svgWidth && svgHeight) {
-        width = parseFloat(svgWidth);
-        height = parseFloat(svgHeight);
-      } else if (viewBox) {
-        const viewBoxValues = viewBox.split(' ').map(parseFloat);
-        if (viewBoxValues.length === 4) {
-          width = viewBoxValues[2];
-          height = viewBoxValues[3];
-        }
-      }
-
-      // Create a canvas with the appropriate dimensions
+      // Create a canvas with the specified dimensions
       const canvas = document.createElement('canvas');
+      const width = parseInt(customWidth) || originalWidth;
+      const height = parseInt(customHeight) || originalHeight;
+
       canvas.width = width;
       canvas.height = height;
 
@@ -88,7 +140,7 @@ export default function Home() {
         img.src = url;
       });
 
-      // Draw the image on the canvas
+      // Draw the image on the canvas with the specified dimensions
       const ctx = canvas.getContext('2d');
       if (!ctx) {
         throw new Error('Failed to get canvas context');
@@ -97,8 +149,8 @@ export default function Home() {
       ctx.clearRect(0, 0, width, height);
       ctx.drawImage(img, 0, 0, width, height);
 
-      // Convert canvas to PNG data URL
-      const pngDataUrl = canvas.toDataURL('image/png');
+      // Convert canvas to PNG data URL with specified quality
+      const pngDataUrl = canvas.toDataURL('image/png', quality);
       setPngUrl(pngDataUrl);
 
       // Clean up the blob URL
@@ -118,7 +170,7 @@ export default function Home() {
     // Create a temporary anchor element
     const a = document.createElement('a');
     a.href = pngUrl;
-    a.download = `${svgFile?.name.replace('.svg', '') || 'converted'}.png`;
+    a.download = `${svgFile?.name.replace('.svg', '') || 'converted'}_${customWidth}x${customHeight}.png`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -198,6 +250,66 @@ export default function Home() {
 
         {svgUrl && (
           <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold mb-4">Output Settings</h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Width (px)</label>
+                  <input
+                    type="number"
+                    value={customWidth}
+                    onChange={(e) => setCustomWidth(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    min="1"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Height (px)</label>
+                  <input
+                    type="number"
+                    value={customHeight}
+                    onChange={(e) => setCustomHeight(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    min="1"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center mb-4">
+                <input
+                  type="checkbox"
+                  id="aspectRatio"
+                  checked={maintainAspectRatio}
+                  onChange={(e) => setMaintainAspectRatio(e.target.checked)}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label htmlFor="aspectRatio" className="ml-2 block text-sm text-gray-700">
+                  Maintain aspect ratio
+                </label>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Quality: {Math.round(quality * 100)}%
+                </label>
+                <input
+                  type="range"
+                  min="0.1"
+                  max="1"
+                  step="0.1"
+                  value={quality}
+                  onChange={(e) => setQuality(parseFloat(e.target.value))}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                />
+              </div>
+
+              <div className="text-xs text-gray-500">
+                <p>Original dimensions: {originalWidth} × {originalHeight} pixels</p>
+              </div>
+            </div>
+
             <button
               className={`w-full py-3 px-4 rounded-lg text-white font-medium ${isConverting || pngUrl ? 'bg-green-500 hover:bg-green-600' : 'bg-blue-500 hover:bg-blue-600'} transition-colors`}
               onClick={pngUrl ? handleDownload : convertToPng}
@@ -222,7 +334,7 @@ export default function Home() {
                   </div>
 
                   <div className="flex-1">
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">PNG</h3>
+                    <h3 className="text-sm font-medium text-gray-500 mb-2">PNG ({parseInt(customWidth)}×{parseInt(customHeight)})</h3>
                     <div className="border rounded-lg p-4 flex items-center justify-center bg-gray-50">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={pngUrl} alt="PNG Preview" className="max-w-full max-h-48 object-contain" />
