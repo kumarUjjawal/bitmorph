@@ -261,7 +261,7 @@ export default function Home() {
     <main className={`min-h-screen p-4 md:p-8 transition-colors ${themeClass}`}>
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold">SVG to PNG Converter</h1>
+          <h1 className="text-3xl text-center md:text-4xl font-bold">SVG to PNG Converter</h1>
           <button
             onClick={() => setIsDarkMode(!isDarkMode)}
             className="p-2 rounded-full hover:bg-opacity-20 hover:bg-gray-500"
