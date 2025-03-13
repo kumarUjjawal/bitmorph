@@ -200,13 +200,13 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen p-4 md:p-8 bg-gray-50">
+    <main className="min-h-screen p-4 md:p-8 bg-[#212121]">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl md:text-4xl font-bold text-center mb-8">SVG to PNG Converter</h1>
 
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+        <div className="bg-gray-50 rounded-lg shadow-md p-6 mb-8">
           <div
-            className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition-colors"
+            className="border-2 border-dashed border-gray-500 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition-colors"
             onClick={() => fileInputRef.current?.click()}
             onDragOver={handleDragOver}
             onDrop={handleDrop}
@@ -224,8 +224,8 @@ export default function Home() {
                 <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                 </svg>
-                <p className="text-lg mb-2">Drag & drop your SVG file here</p>
-                <p className="text-sm text-gray-500">or click to browse</p>
+                <p className="text-lg mb-2 text-black">Drag & drop your SVG file here</p>
+                <p className="text-sm text-black">or click to browse</p>
               </div>
             ) : (
               <div className="flex flex-col items-center">
@@ -251,7 +251,7 @@ export default function Home() {
         {svgUrl && (
           <div className="bg-white rounded-lg shadow-md p-6 mb-8">
             <div className="mb-6">
-              <h2 className="text-xl font-semibold mb-4">Output Settings</h2>
+              <h2 className="text-xl font-semibold mb-4 text-black">Output Settings</h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
@@ -260,7 +260,7 @@ export default function Home() {
                     type="number"
                     value={customWidth}
                     onChange={(e) => setCustomWidth(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
                     min="1"
                   />
                 </div>
@@ -271,7 +271,7 @@ export default function Home() {
                     type="number"
                     value={customHeight}
                     onChange={(e) => setCustomHeight(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
                     min="1"
                   />
                 </div>
@@ -301,7 +301,7 @@ export default function Home() {
                   step="0.1"
                   value={quality}
                   onChange={(e) => setQuality(parseFloat(e.target.value))}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                  className="w-full h-2 bg-gray-400 rounded-lg appearance-none cursor-pointer"
                 />
               </div>
 
