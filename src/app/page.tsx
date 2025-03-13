@@ -1,103 +1,243 @@
-import Image from "next/image";
+// app/page.tsx
+'use client';
+
+import { useState, useRef } from 'react';
+// Removed the Image import from next/image
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [svgFile, setSvgFile] = useState<File | null>(null);
+  const [svgUrl, setSvgUrl] = useState<string | null>(null);
+  const [pngUrl, setPngUrl] = useState<string | null>(null);
+  const [isConverting, setIsConverting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+
+      // Check if the file is an SVG
+      if (file.type !== 'image/svg+xml') {
+        alert('Please upload an SVG file');
+        return;
+      }
+
+      setSvgFile(file);
+
+      // Create a URL for the SVG file
+      const url = URL.createObjectURL(file);
+      setSvgUrl(url);
+      setPngUrl(null); // Reset PNG when a new SVG is uploaded
+    }
+  };
+
+  const convertToPng = async () => {
+    if (!svgUrl || !svgFile) return;
+
+    setIsConverting(true);
+
+    try {
+      // Read the SVG file content
+      const svgText = await svgFile.text();
+
+      // Parse the SVG dimensions
+      const parser = new DOMParser();
+      const svgDoc = parser.parseFromString(svgText, 'image/svg+xml');
+      const svgElement = svgDoc.documentElement;
+
+      // Get SVG dimensions
+      const svgWidth = svgElement.getAttribute('width');
+      const svgHeight = svgElement.getAttribute('height');
+      const viewBox = svgElement.getAttribute('viewBox');
+
+      // Calculate dimensions for the canvas
+      let width = 800; // Default width
+      let height = 600; // Default height
+
+      if (svgWidth && svgHeight) {
+        width = parseFloat(svgWidth);
+        height = parseFloat(svgHeight);
+      } else if (viewBox) {
+        const viewBoxValues = viewBox.split(' ').map(parseFloat);
+        if (viewBoxValues.length === 4) {
+          width = viewBoxValues[2];
+          height = viewBoxValues[3];
+        }
+      }
+
+      // Create a canvas with the appropriate dimensions
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+
+      // Create a Blob URL with the SVG content
+      const blob = new Blob([svgText], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+
+      // Create a new image element
+      const img = new Image();
+
+      // Wait for the image to load before drawing to canvas
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = (e) => {
+          console.error('Image loading error:', e);
+          reject(new Error('Failed to load SVG image'));
+        };
+
+        // Set the source to the blob URL
+        img.src = url;
+      });
+
+      // Draw the image on the canvas
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        throw new Error('Failed to get canvas context');
+      }
+
+      ctx.clearRect(0, 0, width, height);
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Convert canvas to PNG data URL
+      const pngDataUrl = canvas.toDataURL('image/png');
+      setPngUrl(pngDataUrl);
+
+      // Clean up the blob URL
+      URL.revokeObjectURL(url);
+
+    } catch (error) {
+      console.error('Error converting SVG to PNG:', error);
+      alert('Failed to convert SVG to PNG. Error: ' + (error as Error).message);
+    } finally {
+      setIsConverting(false);
+    }
+  };
+
+  const handleDownload = () => {
+    if (!pngUrl) return;
+
+    // Create a temporary anchor element
+    const a = document.createElement('a');
+    a.href = pngUrl;
+    a.download = `${svgFile?.name.replace('.svg', '') || 'converted'}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+
+      if (file.type !== 'image/svg+xml') {
+        alert('Please upload an SVG file');
+        return;
+      }
+
+      setSvgFile(file);
+
+      const url = URL.createObjectURL(file);
+      setSvgUrl(url);
+      setPngUrl(null);
+    }
+  };
+
+  return (
+    <main className="min-h-screen p-4 md:p-8 bg-gray-50">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-3xl md:text-4xl font-bold text-center mb-8">SVG to PNG Converter</h1>
+
+        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+          <div
+            className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition-colors"
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept=".svg"
+              className="hidden"
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+
+            {!svgUrl ? (
+              <div>
+                <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                <p className="text-lg mb-2">Drag & drop your SVG file here</p>
+                <p className="text-sm text-gray-500">or click to browse</p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center">
+                <div className="w-48 h-48 relative mb-4">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={svgUrl} alt="SVG Preview" className="max-w-full max-h-full object-contain" />
+                </div>
+                <p className="text-sm text-gray-500 mb-2">{svgFile?.name}</p>
+                <button
+                  className="text-blue-500 hover:text-blue-700"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    fileInputRef.current?.click();
+                  }}
+                >
+                  Choose a different file
+                </button>
+              </div>
+            )}
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+
+        {svgUrl && (
+          <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+            <button
+              className={`w-full py-3 px-4 rounded-lg text-white font-medium ${isConverting || pngUrl ? 'bg-green-500 hover:bg-green-600' : 'bg-blue-500 hover:bg-blue-600'} transition-colors`}
+              onClick={pngUrl ? handleDownload : convertToPng}
+              disabled={isConverting}
+            >
+              {isConverting ?
+                'Converting...' :
+                pngUrl ? 'Download PNG' : 'Convert to PNG'
+              }
+            </button>
+
+            {pngUrl && (
+              <div className="mt-8">
+                <h2 className="text-xl font-semibold mb-4">Preview</h2>
+                <div className="flex flex-col md:flex-row gap-8">
+                  <div className="flex-1">
+                    <h3 className="text-sm font-medium text-gray-500 mb-2">SVG</h3>
+                    <div className="border rounded-lg p-4 flex items-center justify-center bg-gray-50">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={svgUrl} alt="SVG Preview" className="max-w-full max-h-48 object-contain" />
+                    </div>
+                  </div>
+
+                  <div className="flex-1">
+                    <h3 className="text-sm font-medium text-gray-500 mb-2">PNG</h3>
+                    <div className="border rounded-lg p-4 flex items-center justify-center bg-gray-50">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={pngUrl} alt="PNG Preview" className="max-w-full max-h-48 object-contain" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="text-center text-sm text-gray-500">
+          <p>Client-side conversion - your files are not uploaded to any server</p>
+        </div>
+      </div>
+    </main>
   );
 }
