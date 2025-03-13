@@ -17,16 +17,7 @@ export default function Home() {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
   const [fileSize, setFileSize] = useState<string>('');
-  const [recentFiles, setRecentFiles] = useState<{ name: string, date: string }[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Initialize recent files from localStorage
-  useEffect(() => {
-    const savedFiles = localStorage.getItem('recentSvgFiles');
-    if (savedFiles) {
-      setRecentFiles(JSON.parse(savedFiles));
-    }
-  }, []);
 
   // Update dimensions when a new SVG is loaded
   useEffect(() => {
@@ -79,19 +70,8 @@ export default function Home() {
 
       getSVGDimensions();
 
-      // Add to recent files
-      if (svgFile) {
-        const newRecentFile = {
-          name: svgFile.name,
-          date: new Date().toLocaleString()
-        };
-
-        const updatedFiles = [newRecentFile, ...recentFiles.slice(0, 4)];
-        setRecentFiles(updatedFiles);
-        localStorage.setItem('recentSvgFiles', JSON.stringify(updatedFiles));
-      }
     }
-  }, [svgUrl, svgFile, recentFiles]);
+  }, [svgUrl, svgFile]);
 
   // Update height when width changes and maintain aspect ratio
   useEffect(() => {
@@ -299,21 +279,6 @@ export default function Home() {
                 <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                   or click to browse
                 </p>
-
-                {recentFiles.length > 0 && (
-                  <div className="mt-6">
-                    <p className={`text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                      Recent files:
-                    </p>
-                    <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                      {recentFiles.map((file, index) => (
-                        <div key={index} className="mb-1">
-                          {file.name} <span className="opacity-70">({file.date})</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             ) : (
               <div className="flex flex-col items-center">
