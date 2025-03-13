@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Moon, Sun, Download, Upload, RefreshCw, X, Info } from 'lucide-react';
+import { Moon, Sun, Download, Upload, Info } from 'lucide-react';
 
 export default function Home() {
   const [svgFile, setSvgFile] = useState<File | null>(null);
